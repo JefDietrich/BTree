@@ -4,18 +4,14 @@
 #include <string.h>
 #include <stdbool.h>
 
-
 //-------------------- Constants ----------------------------
-#define NIL -1
-#define MAXKEYS 3
 
+#define MAXKEYS 3
+#define MINKEYS 2
+#define NIL (-1)
+#define PAGESIZE sizeof(BTPAGE)
 
 //--------------------  Structs  ----------------------------
-typedef struct
-{
-    char codCliente[12];
-    char codVeiculo[8];
-} CHAVE_PRIMARIA;
 
 typedef struct
 {
@@ -26,43 +22,56 @@ typedef struct
     char dia[4];
 } REGISTRO;
 
+typedef struct
+{
+    char codCliente[12];
+    char codVeiculo[8];
+} CHAVE_PRIMARIA;
+
 typedef struct 
 {
     CHAVE_PRIMARIA id;
     int rrn;
 } CHAVE_PAGINA;
 
-typedef struct s_PAGINA {
-    int id;
-    int quantidadeChaves;
-    CHAVE_PAGINA chaves[MAXKEYS+1];
-    struct s_PAGINA* filhos[MAXKEYS+1];
-    bool ehFolha;
-} PAGINA;
-
+typedef struct {
+    int quantidadeNos;
+    CHAVE_PAGINA chaves[MAXKEYS];
+    int filhos[MAXKEYS+1];
+    bool ehFolha; // ainda é necessário?
+} BTPAGE;
 
 //--------------------  Creation Functions  ----------------------------
-void criaPagina(PAGINA* pagina, CHAVE_PAGINA chavePagina, int id);
+
+int criarArvore();
+int criarRaiz(CHAVE_PAGINA chave, int esquerda, int direita);
+void iniciarPagina(BTPAGE *pagina);
 
 //--------------------  Insertion Function  ----------------------------
-void insereNo(CHAVE_PAGINA chave, PAGINA* arvoreB);
-int insereRegistro(REGISTRO* novoRegistro, FILE* arquivo);
-void insereRegistroIndice(CHAVE_PAGINA* chavePagina, FILE* arquivo);
 
+int insereRegistro(REGISTRO* novoRegistro, FILE* arquivo);
+void inserirNaPagina(CHAVE_PAGINA chave, int rrnPromovido, BTPAGE *pagina);
+bool inserirNaArvore (int rrn, CHAVE_PAGINA proximaChave, int *rrnPromovido, CHAVE_PAGINA *chavePromovida);
 
 //--------------------   Search Functions   ----------------------------
-int buscaRegistro(CHAVE_PRIMARIA chave, PAGINA* arvoreB);
-void buscaRegistroRRN(int offSet, FILE* arquivo);
+
+int buscaRegistroNaArvore(int rrn, CHAVE_PAGINA chave);
+void buscaRegistroRRN(int buscaRegistroRRN, FILE* arquivo);
+bool buscarNo (CHAVE_PAGINA chave, BTPAGE *pagina, int *posicao);
+int recuperarRrnRaiz();
 
 //--------------------    Aux. Functions    ----------------------------
-int compararChaves(CHAVE_PRIMARIA chave1, CHAVE_PRIMARIA chave2);
-void split(CHAVE_PRIMARIA chave, int filhoDireita, PAGINA* paginaAntiga, CHAVE_PAGINA* chavePromovida, int chaveFilhaPromovida, PAGINA* novaPagina);
-void imprimeArvoreEmOrdem(PAGINA* arvoreB, FILE* arquivo);
+
+int compararChaves(CHAVE_PAGINA chave1, CHAVE_PAGINA chave2);
+void split(CHAVE_PAGINA chave, int filhoDireita, BTPAGE *paginaDividida, CHAVE_PAGINA *chavePromovida, int *filhoDireitaChavePromovida, BTPAGE *novaPagina);
+void imprimeArvoreEmOrdem(int rrn, FILE* arquivo);
 FILE* verificaArquivo(char *arquivo);
+int buscarQuantidadePagina ();
+void lerPagina (int rrn, BTPAGE *pagina);
+void escrevePagina (int rrn, BTPAGE *pagina);
+void atualizarIndiceComNovaRaiz(int rrnRaiz);
+CHAVE_PAGINA criaNoKey();
 
+//--------------------    Files    ----------------------------
 
-
-// Fazer função buscaRegistroRRN
-// Fazer função split
-// Fazer função para ler o arquivo indice ao iniciar o programa
-// Arrumar main
+FILE* indice;
