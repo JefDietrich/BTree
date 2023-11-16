@@ -49,7 +49,7 @@ void iniciarPagina(BTPAGE *pagina);
 
 //--------------------  Insertion Function  ----------------------------
 
-int insereRegistro(REGISTRO* novoRegistro, FILE* arquivo);
+int insereRegistro(REGISTRO novoRegistro);
 void inserirNaPagina(CHAVE_PAGINA chave, int rrnPromovido, BTPAGE *pagina);
 bool inserirNaArvore (int rrn, CHAVE_PAGINA proximaChave, int *rrnPromovido, CHAVE_PAGINA *chavePromovida);
 
@@ -75,3 +75,4 @@ CHAVE_PAGINA criaNoKey();
 //--------------------    Files    ----------------------------
 
 FILE* indice;
+FILE* resultado;

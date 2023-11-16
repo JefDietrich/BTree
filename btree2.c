@@ -34,10 +34,23 @@ int main() {
 
 /* Variáveis para usar posteriormente */
 
+    resultado = fopen("resultado.bin", "a+b");
     BTPAGE pagina;
-    iniciarPagina(&pagina);
+    int rrnRaiz;
+
+    fclose(resultado);
+
+/* Obtendo raiz || Criando índice */
+
+    if ((indice = fopen("indice.bin", "r+b")) > 0) {
+        rrnRaiz = recuperarRrnRaiz();
+    } else {        
+        rrnRaiz = criarArvore();
+    }
+    fclose(indice);
 
 /* Menu de Opções */
+
     int opcao, i;
 
     do
@@ -55,33 +68,87 @@ int main() {
         /* Rotina de cada opção */
         switch (opcao)
         {
+            /* Inserção */
             case 1:
                 while (1)
                 {
                     printf("\nDigite '0' para sair...");
-                    printf("\nInforme um número de 1 a 8: ");
+                    printf("\nInforme um número de 1 a 10: ");
                     scanf("%d", &i);
 
                     if (i == 0)
                         break;
-                    if (i < 1 || i > 8)
+                    if (i < 1 || i > 10)
                     {
                         printf("Opção inválida!");
                     }                    
                     else
                     {
+                        resultado = verificaArquivo("resultado.bin");
+                        int offSet = insereRegistro(registrosInseridos[i-1]);
+                        fclose(resultado);
+
+                        bool foiPromovido;
+                        int rrnPromovido;                    
+                        CHAVE_PRIMARIA chavePrimaria;
+                        strcpy(chavePrimaria.codCliente, registrosInseridos[i-1].codCliente);
+                        strcpy(chavePrimaria.codVeiculo, registrosInseridos[i-1].codVeiculo);
+                        CHAVE_PAGINA chavePromovida, chave;
+                        chave.id = chavePrimaria;
+                        chave.rrn = offSet;
+
+                        indice = verificaArquivo("indice.bin");
+                        foiPromovido = inserirNaArvore(rrnRaiz, chave, &rrnPromovido, &chavePromovida);
+                        if (foiPromovido)
+                            rrnRaiz = criarRaiz(chavePromovida, rrnRaiz, rrnPromovido);
                         
+                        fclose(indice);
                     }
                 }
                 break;
 
+            /* Busca */
             case 2:
-                printf("\nPesquisando por um cliente...\n");
+                while (1)
+                {
+                    printf("\nDigite '0' para sair...");
+                    printf("\nInforme um número de 1 a 4: ");
+                    scanf("%d", &i);
+
+                    if (i == 0)
+                        break;
+                    if (i < 1 || i > 4)
+                    {
+                        printf("Opção inválida!");
+                    }                    
+                    else
+                    {
+                        printf("\nAcessando o arquivo com chaves para busca...\n");
+
+                        CHAVE_PRIMARIA chavePrimaria;
+                        strcpy(chavePrimaria.codCliente, buscaIndice[i-1].codCliente);
+                        strcpy(chavePrimaria.codVeiculo, buscaIndice[i-1].codVeiculo);
+                        CHAVE_PAGINA chavePagina;
+                        chavePagina.id = chavePrimaria;
+                        
+                        indice = verificaArquivo("indice.bin");
+                        
+                        printf("teste %s%s", chavePagina.id.codCliente, chavePagina.id.codVeiculo);
+                        int offSet = buscaRegistroNaArvore(rrnRaiz, chavePagina);
+                        fclose(indice);
+
+                        resultado = verificaArquivo("resultado.bin");
+                        buscaRegistroRRN(offSet, resultado);
+                        fclose(resultado);
+                    }
+                }
                 break;
 
+            /* Listagem */
             case 3:
                 printf("\nListando todos os clientes...\n");
-                arquivo = verificaArquivo("resultado.bin");
+                arquivo = verificaArquivo("indice.bin");
+                
                 imprimeArvoreEmOrdem(recuperarRrnRaiz(), arquivo);
                 fclose(arquivo);
                 break;
@@ -106,8 +173,7 @@ int criarArvore() {
     fseek(indice, 0, SEEK_SET);
     int header = -1;
     fwrite(&header, sizeof(int), 1, indice);
-    
-    fclose(indice);
+
     return header;
 }
 
@@ -139,27 +205,22 @@ void iniciarPagina(BTPAGE *pagina) {
 
 //--------------------  Insertion Function  ----------------------------
 
-int insereRegistro(REGISTRO* novoRegistro, FILE* arquivo) {       
-    if(arquivo == NULL) {
-        arquivo = fopen("resultado.bin", "w+b");
-    }
-
+int insereRegistro(REGISTRO novoRegistro) {       
     char registro[130];
-    sprintf(registro, "%s|%s|%s|%s|%s|",    novoRegistro->codCliente,
-                                            novoRegistro->codVeiculo,
-                                            novoRegistro->nomeCliente,
-                                            novoRegistro->nomeVeiculo,
-                                            novoRegistro->dia
+    sprintf(registro, "%s|%s|%s|%s|%s|",    novoRegistro.codCliente,
+                                            novoRegistro.codVeiculo,
+                                            novoRegistro.nomeCliente,
+                                            novoRegistro.nomeVeiculo,
+                                            novoRegistro.dia
     );
 
     int tamRegistro = strlen(registro);
     
-    fseek(arquivo, 0, SEEK_END);
-    int offSet = ftell(arquivo);    
+    fseek(resultado, 0, SEEK_END);
+    int offSet = ftell(resultado);    
 
-    fwrite(registro, sizeof(char), tamRegistro, arquivo);
-    
-    printf("\nChave %s%s inserida com sucesso!", novoRegistro->codCliente, novoRegistro->codVeiculo);
+    fwrite(&tamRegistro, sizeof(int), 1, resultado);    
+    fwrite(registro, sizeof(char), tamRegistro, resultado);
     return offSet;
 }
 
@@ -193,7 +254,7 @@ bool inserirNaArvore (int rrn, CHAVE_PAGINA proximaChave, int *rrnPromovido, CHA
     lerPagina(rrn, &paginaAtual);
     encontrado = buscarNo (proximaChave, &paginaAtual, &posicao);
     if (encontrado) {
-        printf ("Erro ao inserir, chave já existe: %s%s \n\007", proximaChave.id.codCliente, proximaChave.id.codVeiculo);
+        printf ("Chave duplicada: < %s%s > \n\007", proximaChave.id.codCliente, proximaChave.id.codVeiculo);
         return false;
     }
 
@@ -209,13 +270,17 @@ bool inserirNaArvore (int rrn, CHAVE_PAGINA proximaChave, int *rrnPromovido, CHA
     if(paginaAtual.quantidadeNos < MAXKEYS) {
         inserirNaPagina(chavePromovidaDeBaixo, rrnPromovidoDeBaixo, &paginaAtual);
         escrevePagina(rrn, &paginaAtual);
+        printf("+----- Chave Inserida: <%s%s> -----+\n", proximaChave.id.codCliente, proximaChave.id.codVeiculo);
         return false;
     } else { // Mas caso não haja espaço, é feito o split
         split(chavePromovidaDeBaixo, rrnPromovidoDeBaixo, &paginaAtual, chavePromovida, rrnPromovido, &novaPagina);
         escrevePagina(rrn, &paginaAtual);
         escrevePagina(*rrnPromovido, &novaPagina);
+        printf("+----- Chave Inserida: <%s%s> -----+\n", proximaChave.id.codCliente, proximaChave.id.codVeiculo);
         return true;
     }
+
+
 }
 
 //--------------------   Search Functions   ----------------------------
@@ -229,11 +294,11 @@ int buscaRegistroNaArvore(int rrn, CHAVE_PAGINA chave) {
         return -1;
     }
     
-    lerPagina(rrn, &paginaAtual);
+    lerPagina(rrn, &paginaAtual);    
     encontrado = buscarNo(chave, &paginaAtual, &posicao);
     
     if (encontrado) {
-        return chave.rrn;
+        return paginaAtual.chaves[posicao].rrn;
     }
 
     return buscaRegistroNaArvore(paginaAtual.filhos[posicao], chave);
@@ -246,7 +311,7 @@ void buscaRegistroRRN(int rrnArquivoResultado, FILE* arquivo) {
     fread(&tamanhoRegistro, sizeof(int), 1, arquivo);
     fread(registroBuscado, sizeof(char), tamanhoRegistro, arquivo);
     registroBuscado[tamanhoRegistro] = '\0';
-    printf("%s\n", registroBuscado);
+    puts(registroBuscado);
 }
 
 bool buscarNo(CHAVE_PAGINA chave, BTPAGE *pagina, int *posicao) {
@@ -267,13 +332,15 @@ int recuperarRrnRaiz() {
 
 int compararChaves(CHAVE_PAGINA chave1, CHAVE_PAGINA chave2) {
     char id1[20], id2[20];
-    sprintf(id1, "%s%s", chave1.id.codVeiculo, chave1.id.codCliente);
-    sprintf(id2, "%s%s", chave2.id.codVeiculo, chave2.id.codCliente);
+    sprintf(id1, "%s%s", chave1.id.codCliente, chave1.id.codVeiculo);
+    sprintf(id2, "%s%s", chave2.id.codCliente, chave2.id.codVeiculo);
 
     return strcmp(id1, id2);
 }
 
 void split(CHAVE_PAGINA chave, int filhoDireita, BTPAGE *paginaDividida, CHAVE_PAGINA *chavePromovida, int *filhoDireitaChavePromovida, BTPAGE *novaPagina) {
+    printf("+----- Divisão de Nó -----+\n");
+    
     int j;
     CHAVE_PAGINA auxChaves[MAXKEYS+1];
     int auxFilhos[MAXKEYS+2];
@@ -285,15 +352,14 @@ void split(CHAVE_PAGINA chave, int filhoDireita, BTPAGE *paginaDividida, CHAVE_P
     auxFilhos[MAXKEYS] = paginaDividida->filhos[MAXKEYS];
 
     // Deslocando as chaves para inserir uma nova
-    for (j = MAXKEYS; compararChaves(chave, auxChaves[j-1]) < 0 && j > 0; j--){
+    for (j = MAXKEYS; (compararChaves(chave, auxChaves[j-1]) < 0) && j > 0; j--){
         auxChaves[j] = auxChaves[j-1];
         auxFilhos[j+1] = auxFilhos[j];
     }
     auxChaves[j] = chave;
     auxFilhos[j+1] = filhoDireita;
 
-
-    *filhoDireitaChavePromovida = buscarQuantidadePagina();
+    *filhoDireitaChavePromovida = buscarQuantidadePagina();    
     iniciarPagina(novaPagina);
 
     for (j = 0; j < MINKEYS; j++){
@@ -306,18 +372,18 @@ void split(CHAVE_PAGINA chave, int filhoDireita, BTPAGE *paginaDividida, CHAVE_P
         if((j + MINKEYS) < MAXKEYS) {
             paginaDividida->chaves[j + MINKEYS] = criaNoKey(); // posições: 2 e 3
         }
-
-        if((j + MINKEYS + 1) < MAXKEYS) {
-            paginaDividida->filhos[j + 1 + MINKEYS] = NIL; // posições: 3 e 4
-        }
+        paginaDividida->filhos[j + MINKEYS] = NIL; // posições: 2 e 3
     }
-    
-    novaPagina->filhos[MINKEYS] = auxFilhos[j + 1 + MINKEYS]; // posição: 4
-  
-    novaPagina->quantidadeNos = MAXKEYS - MINKEYS + 1;
-    paginaDividida->quantidadeNos = MINKEYS;
+    novaPagina->filhos[MINKEYS] = auxFilhos[j + MINKEYS]; // posição: 4
+        
+    paginaDividida->chaves[1] = criaNoKey();
 
-    *chavePromovida = auxChaves[MINKEYS - 1];
+    novaPagina->quantidadeNos = (MAXKEYS + 1) - MINKEYS;
+    paginaDividida->quantidadeNos = MINKEYS - 1;
+
+    *chavePromovida = auxChaves[1];
+
+    printf("+----- Chave Promovida: <%s%s> -----+\n", chavePromovida->id.codCliente, chavePromovida->id.codVeiculo);
 }
 
 void imprimeArvoreEmOrdem(int rrn, FILE* arquivo) {
@@ -347,7 +413,7 @@ void imprimeArvoreEmOrdem(int rrn, FILE* arquivo) {
 }
 
 FILE* verificaArquivo(char *arquivo) {
-    FILE *fp = fopen(arquivo, "rb");
+    FILE *fp = fopen(arquivo, "r+b");
 
     if (fp == NULL) {
         printf("O arquivo %s não existe.", arquivo);
@@ -376,7 +442,6 @@ void escrevePagina(int rrn, BTPAGE *pagina) {
     long addr;
     addr = (long)rrn * (long)PAGESIZE + sizeof(int);
     fseek(indice, addr, SEEK_SET);
-    printf("Nova pagina escrita na posicao %d\n", rrn);
     fwrite(pagina, sizeof(BTPAGE), 1, indice);
 }
 
@@ -388,12 +453,13 @@ void atualizarIndiceComNovaRaiz(int rrnRaiz) {
 CHAVE_PAGINA criaNoKey() {
     CHAVE_PAGINA noKey;
     CHAVE_PRIMARIA nullKey;
-    char nullableKey[1] = "@";
+    char nullableKey[12] = "@@@@@@@@@@@";
+    char nullableKey2[8] = "#######";
     strcpy(nullKey.codCliente, nullableKey);
-    strcpy(nullKey.codVeiculo, nullableKey);
+    strcpy(nullKey.codVeiculo, nullableKey2);
 
     noKey.id = nullKey;
-    noKey.rrn = (-1);
+    noKey.rrn = -1;
     
     return noKey;
 }
