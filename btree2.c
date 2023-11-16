@@ -133,13 +133,16 @@ int main() {
                         
                         indice = verificaArquivo("indice.bin");
                         
-                        printf("teste %s%s", chavePagina.id.codCliente, chavePagina.id.codVeiculo);
                         int offSet = buscaRegistroNaArvore(rrnRaiz, chavePagina);
                         fclose(indice);
 
-                        resultado = verificaArquivo("resultado.bin");
-                        buscaRegistroRRN(offSet, resultado);
-                        fclose(resultado);
+                        if(offSet != (-1)) {
+                            resultado = verificaArquivo("resultado.bin");
+                            buscaRegistroRRN(offSet, resultado);
+                            fclose(resultado);
+                        } else {
+                            printf("Chave não encontrada no índice!\n");
+                        }
                     }
                 }
                 break;
@@ -147,8 +150,7 @@ int main() {
             /* Listagem */
             case 3:
                 printf("\nListando todos os clientes...\n");
-                arquivo = verificaArquivo("indice.bin");
-                
+                arquivo = verificaArquivo("indice.bin");                
                 imprimeArvoreEmOrdem(recuperarRrnRaiz(), arquivo);
                 fclose(arquivo);
                 break;
@@ -243,10 +245,11 @@ bool inserirNaArvore (int rrn, CHAVE_PAGINA proximaChave, int *rrnPromovido, CHA
     int posicao, rrnPromovidoDeBaixo;   // rrnPromovidoDeBaixo: Vem da chamada recursiva
     CHAVE_PAGINA chavePromovidaDeBaixo; // chavePromovidaDeBaixo: Vem da chamada recursiva
 
-    // Está em uma folha da árvore (seria a inserção do primeiro item?)
+    // Está em uma folha da árvore
     if (rrn == NIL) {
         *chavePromovida = proximaChave;
         *rrnPromovido = NIL;
+        printf("+----- Chave Inserida: <%s%s> -----+\n", proximaChave.id.codCliente, proximaChave.id.codVeiculo);
         return true;
     }
 
@@ -254,7 +257,7 @@ bool inserirNaArvore (int rrn, CHAVE_PAGINA proximaChave, int *rrnPromovido, CHA
     lerPagina(rrn, &paginaAtual);
     encontrado = buscarNo (proximaChave, &paginaAtual, &posicao);
     if (encontrado) {
-        printf ("Chave duplicada: < %s%s > \n\007", proximaChave.id.codCliente, proximaChave.id.codVeiculo);
+        printf("+----- Chave duplicada: <%s%s> -----+\n", proximaChave.id.codCliente, proximaChave.id.codVeiculo);
         return false;
     }
 
@@ -270,7 +273,6 @@ bool inserirNaArvore (int rrn, CHAVE_PAGINA proximaChave, int *rrnPromovido, CHA
     if(paginaAtual.quantidadeNos < MAXKEYS) {
         inserirNaPagina(chavePromovidaDeBaixo, rrnPromovidoDeBaixo, &paginaAtual);
         escrevePagina(rrn, &paginaAtual);
-        printf("+----- Chave Inserida: <%s%s> -----+\n", proximaChave.id.codCliente, proximaChave.id.codVeiculo);
         return false;
     } else { // Mas caso não haja espaço, é feito o split
         split(chavePromovidaDeBaixo, rrnPromovidoDeBaixo, &paginaAtual, chavePromovida, rrnPromovido, &novaPagina);
@@ -279,8 +281,6 @@ bool inserirNaArvore (int rrn, CHAVE_PAGINA proximaChave, int *rrnPromovido, CHA
         printf("+----- Chave Inserida: <%s%s> -----+\n", proximaChave.id.codCliente, proximaChave.id.codVeiculo);
         return true;
     }
-
-
 }
 
 //--------------------   Search Functions   ----------------------------
@@ -387,6 +387,7 @@ void split(CHAVE_PAGINA chave, int filhoDireita, BTPAGE *paginaDividida, CHAVE_P
 }
 
 void imprimeArvoreEmOrdem(int rrn, FILE* arquivo) {
+    printf("rrn: %d", rrn);
     BTPAGE paginaAtual;
     lerPagina(rrn, &paginaAtual);
 
@@ -395,21 +396,23 @@ void imprimeArvoreEmOrdem(int rrn, FILE* arquivo) {
         // Percorre as chaves da página e imprime os registros associados a essas chaves
         for (int i = 0; i < paginaAtual.quantidadeNos; i++) {
             buscaRegistroRRN(paginaAtual.chaves[i].rrn, arquivo);
+            printf("rrn filho: %d", paginaAtual.chaves[i].rrn);
         }
         // Retorna da função, encerrando a execução para esse nó
         return;
-    } else {
+    }
+    else {
         // Se a página não for uma folha, chama recursivamente a função para o primeiro filho
         imprimeArvoreEmOrdem(paginaAtual.filhos[0], arquivo);
     }
 
-    // Percorre as chaves da página e chama recursivamente a função para os filhos
-    for (int i = 0; i < paginaAtual.quantidadeNos; i++) {
-        // Imprime o registro associado à chave na posição i
-        buscaRegistroRRN(paginaAtual.chaves[i].rrn, arquivo);
-        // Chama a função recursivamente para o filho da direita da chave i
-        imprimeArvoreEmOrdem(paginaAtual.filhos[i + 1], arquivo);
-    }
+    // // Percorre as chaves da página e chama recursivamente a função para os filhos
+    // for (int i = 0; i < paginaAtual.quantidadeNos; i++) {
+    //     // Imprime o registro associado à chave na posição i
+    //     buscaRegistroRRN(paginaAtual.chaves[i].rrn, arquivo);
+    //     // Chama a função recursivamente para o filho da direita da chave i
+    //     imprimeArvoreEmOrdem(paginaAtual.filhos[i + 1], arquivo);
+    // }
 }
 
 FILE* verificaArquivo(char *arquivo) {
