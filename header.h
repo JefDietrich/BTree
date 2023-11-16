@@ -38,7 +38,6 @@ typedef struct {
     int quantidadeNos;
     CHAVE_PAGINA chaves[MAXKEYS];
     int filhos[MAXKEYS+1];
-    bool ehFolha; // ainda é necessário?
 } BTPAGE;
 
 //--------------------  Creation Functions  ----------------------------
@@ -64,7 +63,7 @@ int recuperarRrnRaiz();
 
 int compararChaves(CHAVE_PAGINA chave1, CHAVE_PAGINA chave2);
 void split(CHAVE_PAGINA chave, int filhoDireita, BTPAGE *paginaDividida, CHAVE_PAGINA *chavePromovida, int *filhoDireitaChavePromovida, BTPAGE *novaPagina);
-void imprimeArvoreEmOrdem(int rrn, FILE* arquivo);
+void imprimeArvoreEmOrdem(int rrn);
 FILE* verificaArquivo(char *arquivo);
 int buscarQuantidadePagina ();
 void lerPagina (int rrn, BTPAGE *pagina);
